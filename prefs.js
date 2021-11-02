@@ -24,7 +24,7 @@ const GnoMenuPreferencesWidget = new GObject.Class({
 
     _init: function(params) {
         this.parent(params);
-        this.settings = Convenience.getSettings('org.gnome.shell.extensions.gnomenu');
+        this.settings = Convenience.getSettings('org.gnome.shell.extensions.gnomenu-ng');
 
         let notebook = new Gtk.Notebook();
 

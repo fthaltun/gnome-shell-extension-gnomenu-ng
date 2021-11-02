@@ -15,7 +15,7 @@
 # as egrep, would not work (it would be greedy)
 # ===========================================================
 
-#main_dir="/home/cmcentyre/Desktop/Gno-Menu Development/gnomenu@panacier.gmail.com/"
+#main_dir="/home/cmcentyre/Desktop/Gno-Menu Development/gnomenu-ng@panacier.gmail.com/"
 main_dir=`dirname "${PWD}"`
 output=$main_dir/po/en_US.pot
 app="Gno-Menu"

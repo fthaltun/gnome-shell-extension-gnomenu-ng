@@ -17,6 +17,6 @@ if ! [ -d ../locale/$file/LC_MESSAGES ]; then
 fi
 
 msgfmt $file.po
-mv messages.mo ../locale/$file/LC_MESSAGES/gnomenu.mo
+mv messages.mo ../locale/$file/LC_MESSAGES/gnomenu-ng.mo
 
 done

@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist gettext-domain="gnome-shell-extensions-gnomenu">
-  <enum id='org.gnome.shell.extensions.gnomenu.panelMenuPosition'>
+<schemalist gettext-domain="gnome-shell-extensions-gnomenu-ng">
+  <enum id='org.gnome.shell.extensions.gnomenu-ng.panelMenuPosition'>
     <value value='0' nick='Left'/>
     <value value='1' nick='Center'/>
     <value value='2' nick='Right'/>
   </enum>
-  <enum id='org.gnome.shell.extensions.gnomenu.menuLayout'>
+  <enum id='org.gnome.shell.extensions.gnomenu-ng.menuLayout'>
     <value value='0' nick='Normal'/>
     <value value='1' nick='Compact'/>
   </enum>
-  <enum id='org.gnome.shell.extensions.gnomenu.shortcutsDisplay'>
+  <enum id='org.gnome.shell.extensions.gnomenu-ng.shortcutsDisplay'>
     <value value='0' nick='Favorites'/>
     <value value='1' nick='Places'/>
   </enum>
-  <enum id='org.gnome.shell.extensions.gnomenu.viewMode'>
+  <enum id='org.gnome.shell.extensions.gnomenu-ng.viewMode'>
     <value value='0' nick='List'/>
     <value value='1' nick='Grid'/>
   </enum>
-  <enum id='org.gnome.shell.extensions.gnomenu.appsDisplay'>
+  <enum id='org.gnome.shell.extensions.gnomenu-ng.appsDisplay'>
     <value value='0' nick='All'/>
     <value value='1' nick='Frequent'/>
     <value value='2' nick='Favorites'/>
@@ -25,11 +25,11 @@
     <value value='4' nick='WebBookmarks'/>
     <value value='5' nick='None'/>
   </enum>
-  <enum id='org.gnome.shell.extensions.gnomenu.selectMethod'>
+  <enum id='org.gnome.shell.extensions.gnomenu-ng.selectMethod'>
     <value value='0' nick='Hover'/>
     <value value='1' nick='Click'/>
   </enum>
-  <schema path="/org/gnome/shell/extensions/gnomenu/" id="org.gnome.shell.extensions.gnomenu">
+  <schema path="/org/gnome/shell/extensions/gnomenu/" id="org.gnome.shell.extensions.gnomenu-ng">
     <key type="b" name="disable-activities-hotcorner">
       <default>false</default>
       <summary>Disable the view button hot corner</summary>
@@ -140,12 +140,12 @@
       <summary>Don't hide the settings button from this group</summary>
       <description>Show Gnomenu preferences button to NONE, ALL, unix-group</description>
     </key>
-    <key enum="org.gnome.shell.extensions.gnomenu.panelMenuPosition" name="panel-menu-position">
+    <key enum="org.gnome.shell.extensions.gnomenu-ng.panelMenuPosition" name="panel-menu-position">
       <default>'Center'</default>
       <summary>Set the position of the menu button</summary>
       <description>Set the position of the menu button</description>
     </key>
-    <key enum="org.gnome.shell.extensions.gnomenu.menuLayout" name="menu-layout">
+    <key enum="org.gnome.shell.extensions.gnomenu-ng.menuLayout" name="menu-layout">
       <default>'Normal'</default>
       <summary>Size and layout of the applications menu</summary>
       <description>Size and layout of the applications menu</description>
@@ -160,12 +160,12 @@
       <summary>Hide the Shortcuts Panel of the menu</summary>
       <description>Hide the Shortcuts Panel of the menu</description>
     </key>
-    <key enum="org.gnome.shell.extensions.gnomenu.shortcutsDisplay" name="shortcuts-display">
+    <key enum="org.gnome.shell.extensions.gnomenu-ng.shortcutsDisplay" name="shortcuts-display">
       <default>'Places'</default>
       <summary>Icons to display on Shortcuts Panel</summary>
       <description>Icons to display on Shortcuts Panel</description>
     </key>
-    <key enum="org.gnome.shell.extensions.gnomenu.viewMode" name="startup-view-mode">
+    <key enum="org.gnome.shell.extensions.gnomenu-ng.viewMode" name="startup-view-mode">
       <default>'Grid'</default>
       <summary>Startup applications view mode</summary>
       <description>Startup applications view mode</description>
@@ -175,7 +175,7 @@
       <summary>Number of columns in apps grid</summary>
       <description>Number of columns in apps grid</description>
     </key>
-    <key enum="org.gnome.shell.extensions.gnomenu.appsDisplay" name="startup-apps-display">
+    <key enum="org.gnome.shell.extensions.gnomenu-ng.appsDisplay" name="startup-apps-display">
       <default>'Frequent'</default>
       <summary>Startup applications to display</summary>
       <description>Startup applications to display</description>
@@ -185,7 +185,7 @@
       <summary>Hide the Categories Panel of the menu</summary>
       <description>Hide the Categories Panel of the menu</description>
     </key>
-    <key enum="org.gnome.shell.extensions.gnomenu.selectMethod" name="category-selection-method">
+    <key enum="org.gnome.shell.extensions.gnomenu-ng.selectMethod" name="category-selection-method">
       <default>'Hover'</default>
       <summary>Method of selecting categories</summary>
       <description>Method of selecting categories</description>

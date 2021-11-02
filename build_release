@@ -56,7 +56,7 @@ cp -R icons/ "$temp_dir/"
 
 # Create release zip
 cd "$temp_dir/"
-zip -r gnomenu@panacier.gmail.com.zip *
+zip -r gnomenu-ng@panacier.gmail.com.zip *
 
 # Set release_dir based on development option and metadata version number
 version_number=$(grep \"version\": metadata.json | awk '{print $2}')
@@ -75,7 +75,7 @@ then
 fi
 
 # Copy zip file to release directory
-cp gnomenu@panacier.gmail.com.zip "$release_dir/"
+cp gnomenu-ng@panacier.gmail.com.zip "$release_dir/"
 
 # Cleanup - remove temp directory
 rm -Rf "$temp_dir"

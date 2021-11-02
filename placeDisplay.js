@@ -21,7 +21,7 @@ const Params = imports.misc.params;
 const Search = imports.ui.search;
 const Util = imports.misc.util;
 
-const Gettext = imports.gettext.domain('gnomenu');
+const Gettext = imports.gettext.domain('gnomenu-ng');
 const _ = Gettext.gettext;
 const N_ = function(x) { return x; }
 

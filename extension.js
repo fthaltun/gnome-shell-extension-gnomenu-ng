@@ -45,7 +45,7 @@ const Me = imports.misc.extensionUtils.getCurrentExtension();
 const WorkspaceThumbnail = Me.imports.myWorkspaceThumbnail;
 
 const Convenience = Me.imports.convenience;
-let settings = Convenience.getSettings('org.gnome.shell.extensions.gnomenu');
+let settings = Convenience.getSettings('org.gnome.shell.extensions.gnomenu-ng');
 
 const Chromium = Me.imports.webChromium;
 //const Epiphany = Me.imports.webEpiphany;
@@ -62,7 +62,7 @@ const PlaceDisplay = Me.imports.placeDisplay;
 const LoginManager = imports.misc.loginManager;
 
 
-const PREFS_DIALOG = "gnome-shell-extension-prefs gnomenu@panacier.gmail.com";
+const PREFS_DIALOG = "gnome-shell-extension-prefs gnomenu-ng@panacier.gmail.com";
 
 const ShortcutsDisplay = {
     FAVORITES: 0,
