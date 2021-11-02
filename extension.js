@@ -13,7 +13,6 @@
  * ========================================================================================================
  */
 
-const _DEBUG_ = false;
 
 const IconTheme = imports.gi.Gtk.IconTheme;
 const GLib = imports.gi.GLib;
@@ -119,6 +118,24 @@ function getCustIcon(icon_name) {
             return false;
         }
 
+};
+
+// Workaround for (X)Wayland
+Gtk.IconTheme.get_default = function() {
+    let theme = new Gtk.IconTheme();
+    theme.set_custom_theme(St.Settings.get().gtk_icon_theme);
+    return theme;
+};
+
+// Make sure that signals are handled and disconnected properly
+function disconnect(obj, sig) {
+    try {
+        if (sig != null && obj) {
+            obj.disconnect(sig);
+        }
+    } catch (error) {
+        log('[GnoMenu] Failed to disconnect signal: ' + error);
+    }
 }
 
 /* =========================================================================
@@ -173,7 +190,7 @@ var CategoryListButton = class GnoMenu_CategoryListButton {
         this._ignoreHoverSelect = null;
 
         let style = "popup-menu-item popup-submenu-menu-item gnomenu-category-button";
-        this.actor = new St.Button({ reactive: true, style_class: style, x_fill: true, y_fill: true, x_align: St.Align.MIDDLE, y_align: St.Align.MIDDLE });
+        this.actor = new St.Button({ reactive: true, style_class: style, y_align: Clutter.ActorAlign.CENTER });
         this.actor._delegate = this;
         this.buttonbox = new St.BoxLayout({style_class: 'gnomenu-category-button-box'});
         let iconSize = 28;
@@ -194,17 +211,17 @@ var CategoryListButton = class GnoMenu_CategoryListButton {
             }
         }
 
-        this.label = new St.Label({ text: categoryNameText, style_class: 'gnomenu-category-button-label' });
-        this.buttonbox.add(this.label, {expand: true, x_fill: false, y_fill: false, x_align: St.Align.START, y_align: St.Align.MIDDLE});
+        this.label = new St.Label({ text: categoryNameText, style_class: 'gnomenu-category-button-label', x_expand: true, y_expand:true, x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.CENTER });
+        this.buttonbox.add_child(this.label);
         if (categoryIconName) {
-            this.iconWrapper = new St.Bin({style_class: 'gnomenu-category-button-icon'});
+            this.iconWrapper = new St.Bin({style_class: 'gnomenu-category-button-icon', x_expand: false, y_expand: false, x_align: Clutter.ActorAlign.END, y_align: Clutter.ActorAlign.CENTER});
             if (getCustIcon(categoryIconName)) {
                 this.icon = new St.Icon({gicon: getCustIcon(categoryIconName), icon_size: iconSize});
             } else {
                 this.icon = new St.Icon({icon_name: categoryIconName, icon_size: iconSize});
             }
             this.iconWrapper.add_actor(this.icon);
-            this.buttonbox.add(this.iconWrapper, {expand: false, x_align: St.Align.MIDDLE, y_align: St.Align.MIDDLE});
+            this.buttonbox.add_child(this.iconWrapper);
         }
 
         this.actor.set_child(this.buttonbox);
@@ -273,33 +290,33 @@ var ShortcutButton = class GnoMenu_ShortcutButton {
         this._app = app;
         this._type = appType;
         let style = "popup-menu-item gnomenu-shortcut-button";
-        this.actor = new St.Button({ reactive: true, style_class: style, x_align: St.Align.MIDDLE, y_align: St.Align.START });
+        this.actor = new St.Button({ reactive: true, style_class: style, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.START });
         this.actor._delegate = this;
         this._iconSize = (settings.get_int('shortcuts-icon-size') > 0) ? settings.get_int('shortcuts-icon-size') : 32;
 
         // appType 0 = application, appType 1 = place, appType 2 = recent
         if (appType == ApplicationType.APPLICATION) {
             this.icon = app.create_icon_texture(this._iconSize);
-            this.label = new St.Label({ text: app.get_name(), style_class: 'gnomenu-application-grid-button-label' });
+            this.label = new St.Label({ text: app.get_name(), style_class: 'gnomenu-application-grid-button-label', x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.CENTER });
         } else if (appType == ApplicationType.PLACE) {
             // Adjust 'places' symbolic icons by reducing their size
             // and setting a special class for button padding
             this._iconSize -= 4;
             this.actor.add_style_class_name('gnomenu-shortcut-symbolic-button');
-            this.icon = new St.Icon({gicon: app.icon, icon_size: this._iconSize});
+            this.icon = new St.Icon({gicon: app.icon, icon_size: this._iconSize, x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.CENTER});
             if(!this.icon) this.icon = new St.Icon({icon_name: 'error', icon_size: this._iconSize, icon_type: St.IconType.FULLCOLOR});
-            this.label = new St.Label({ text: app.name, style_class: 'gnomenu-application-grid-button-label' });
+            this.label = new St.Label({ text: app.name, style_class: 'gnomenu-application-grid-button-label', x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.CENTER });
         } else if (appType == ApplicationType.RECENT) {
             let gicon = Gio.content_type_get_icon(app.mime);
             this.icon = new St.Icon({gicon: gicon, icon_size: this._iconSize});
-            if(!this.icon) this.icon = new St.Icon({icon_name: 'error', icon_size: this._iconSize, icon_type: St.IconType.FULLCOLOR});
-            this.label = new St.Label({ text: app.name, style_class: 'gnomenu-application-grid-button-label' });
+            if(!this.icon) this.icon = new St.Icon({icon_name: 'error', icon_size: this._iconSize, icon_type: St.IconType.FULLCOLOR, x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.CENTER});
+            this.label = new St.Label({ text: app.name, style_class: 'gnomenu-application-grid-button-label', x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.CENTER });
         }
-        //this.label = new St.Label({ text: app.get_name(), style_class: 'gnomenu-shortcut-button-label' });
+        //this.label = new St.Label({ text: app.name, style_class: 'gnomenu-shortcut-button-label', x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.CENTER });
 
         this.buttonbox = new St.BoxLayout();
-        this.buttonbox.add(this.icon, {x_fill: false, y_fill: false, x_align: St.Align.START, y_align: St.Align.MIDDLE});
-        //this.buttonbox.add(this.label, {x_fill: false, y_fill: true, x_align: St.Align.START, y_align: St.Align.MIDDLE});
+        this.buttonbox.add_child(this.icon);
+        //this.buttonbox.add_child(this.label);
 
         this.actor.set_child(this.buttonbox);
 
@@ -383,23 +400,23 @@ var AppListButton = class GnoMenu_AppListButton {
         this._type = appType;
         this._stateChangedId = 0;
         let style = "popup-menu-item gnomenu-application-list-button";
-        this.actor = new St.Button({ reactive: true, style_class: style, x_align: St.Align.START, y_align: St.Align.MIDDLE});
+        this.actor = new St.Button({ reactive: true, style_class: style, x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.CENTER});
         this.actor._delegate = this;
         this._iconSize = (settings.get_int('apps-list-icon-size') > 0) ? settings.get_int('apps-list-icon-size') : 28;
 
         // appType 0 = application, appType 1 = place, appType 2 = recent
         if (appType == ApplicationType.APPLICATION) {
             this.icon = app.create_icon_texture(this._iconSize);
-            this.label = new St.Label({ text: app.get_name(), style_class: 'gnomenu-application-list-button-label' });
+            this.label = new St.Label({ text: app.get_name(), style_class: 'gnomenu-application-list-button-label', x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.CENTER });
         } else if (appType == ApplicationType.PLACE) {
             this.icon = new St.Icon({gicon: app.icon, icon_size: this._iconSize});
-            if(!this.icon) this.icon = new St.Icon({icon_name: 'error', icon_size: this._iconSize, icon_type: St.IconType.FULLCOLOR});
-            this.label = new St.Label({ text: app.name, style_class: 'gnomenu-application-list-button-label' });
+            if(!this.icon) this.icon = new St.Icon({icon_name: 'error', icon_size: this._iconSize, icon_type: St.IconType.FULLCOLOR, x_align: Clutter.ActorAlign.END, y_align: Clutter.ActorAlign.END});
+            this.label = new St.Label({ text: app.name, style_class: 'gnomenu-application-list-button-label', x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.CENTER });
         } else if (appType == ApplicationType.RECENT) {
             let gicon = Gio.content_type_get_icon(app.mime);
             this.icon = new St.Icon({gicon: gicon, icon_size: this._iconSize});
-            if(!this.icon) this.icon = new St.Icon({icon_name: 'error', icon_size: this._iconSize, icon_type: St.IconType.FULLCOLOR});
-            this.label = new St.Label({ text: app.name, style_class: 'gnomenu-application-list-button-label' });
+            if(!this.icon) this.icon = new St.Icon({icon_name: 'error', icon_size: this._iconSize, icon_type: St.IconType.FULLCOLOR, x_align: Clutter.ActorAlign.END, y_align: Clutter.ActorAlign.END});
+            this.label = new St.Label({ text: app.name, style_class: 'gnomenu-application-list-button-label', x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.CENTER });
         }
 
         this._dot = new St.Widget({ style_class: 'app-well-app-running-dot',
@@ -408,15 +425,15 @@ var AppListButton = class GnoMenu_AppListButton {
                                     x_align: Clutter.ActorAlign.CENTER,
                                     y_align: Clutter.ActorAlign.END });
 
-        this._iconContainer = new St.BoxLayout({vertical: true});
+        this._iconContainer = new St.BoxLayout({vertical: true, x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.CENTER});
         this._iconContainer.add_style_class_name('gnomenu-application-list-button-icon');
 
-        this._iconContainer.add(this.icon, {x_fill: false, y_fill: false, x_align: St.Align.END, y_align: St.Align.END});
-        this._iconContainer.add(this._dot, {x_fill: false, y_fill: false, x_align: St.Align.END, y_align: St.Align.END});
+        this._iconContainer.add_child(this.icon);
+        this._iconContainer.add_child(this._dot);
 
         this.buttonbox = new St.BoxLayout();
-        this.buttonbox.add(this._iconContainer, {x_fill: false, y_fill: false, x_align: St.Align.START, y_align: St.Align.MIDDLE});
-        this.buttonbox.add(this.label, {x_fill: false, y_fill: false, x_align: St.Align.START, y_align: St.Align.MIDDLE});
+        this.buttonbox.add_child(this._iconContainer);
+        this.buttonbox.add_child(this.label);
 
         this.actor.set_child(this.buttonbox);
 
@@ -536,40 +553,40 @@ var AppGridButton = class GnoMenu_AppGridButton {
             styleLabel += " no-categories";
         }
 
-        this.actor = new St.Button({reactive: true, style_class: styleButton, x_align: St.Align.MIDDLE, y_align: St.Align.MIDDLE});
+        this.actor = new St.Button({reactive: true, style_class: styleButton, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
         this.actor._delegate = this;
         this._iconSize = (settings.get_int('apps-grid-icon-size') > 0) ? settings.get_int('apps-grid-icon-size') : 64;
 
         // appType 0 = application, appType 1 = place, appType 2 = recent
         if (appType == ApplicationType.APPLICATION) {
             this.icon = app.create_icon_texture(this._iconSize);
-            this.label = new St.Label({ text: app.get_name(), style_class: styleLabel });
+            this.label = new St.Label({ text: app.get_name(), style_class: styleLabel, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER });
         } else if (appType == ApplicationType.PLACE) {
-            this.icon = new St.Icon({gicon: app.icon, icon_size: this._iconSize});
+            this.icon = new St.Icon({gicon: app.icon, icon_size: this._iconSize, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
             if(!this.icon) this.icon = new St.Icon({icon_name: 'error', icon_size: this._iconSize, icon_type: St.IconType.FULLCOLOR});
-            this.label = new St.Label({ text: app.name, style_class: styleLabel });
+            this.label = new St.Label({ text: app.name, style_class: styleLabel, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER });
         } else if (appType == ApplicationType.RECENT) {
             let gicon = Gio.content_type_get_icon(app.mime);
-            this.icon = new St.Icon({gicon: gicon, icon_size: this._iconSize});
+            this.icon = new St.Icon({gicon: gicon, icon_size: this._iconSize, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
             if(!this.icon) this.icon = new St.Icon({icon_name: 'error', icon_size: this._iconSize, icon_type: St.IconType.FULLCOLOR});
-            this.label = new St.Label({ text: app.name, style_class: styleLabel });
+            this.label = new St.Label({ text: app.name, style_class: styleLabel, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER });
         }
 
         this._dot = new St.Widget({ style_class: 'app-well-app-running-dot',
                                     layout_manager: new Clutter.BinLayout(),
                                     x_expand: true, y_expand: true,
-                                    x_align: Clutter.ActorAlign.CENTER,
+                                    x_align: Clutter.ActorAlign.CENTER, 
                                     y_align: Clutter.ActorAlign.END });
 
         this.buttonbox = new St.BoxLayout({vertical: true});
-        this.buttonbox.add(this.icon, {x_fill: false, y_fill: false,x_align: St.Align.MIDDLE, y_align: St.Align.START});
+        this.buttonbox.add_child(this.icon);
         if(includeText){
             // Use pango to wrap label text
             //this.label.clutter_text.line_wrap_mode = Pango.WrapMode.WORD;
             //this.label.clutter_text.line_wrap = true;
-            this.buttonbox.add(this.label, {x_fill: false, y_fill: true,x_align: St.Align.MIDDLE, y_align: St.Align.MIDDLE});
+            this.buttonbox.add_child(this.label);
         }
-        this.buttonbox.add(this._dot, {x_fill: false, y_fill: false,x_align: St.Align.MIDDLE, y_align: St.Align.START});
+        this.buttonbox.add_child(this._dot);
         this.actor.set_child(this.buttonbox);
 
         // Connect signals
@@ -672,7 +689,7 @@ var GroupButton = class GnoMenu_GroupButton {
         this.buttonPressCallback = null;
         this.buttonReleaseCallback = null;
         let style = "popup-menu-item popup-submenu-menu-item";
-        this.actor = new St.Button({ reactive: true, style_class: style, x_align: St.Align.MIDDLE, y_align: St.Align.MIDDLE });
+        this.actor = new St.Button({ reactive: true, style_class: style, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER });
         this.actor.add_style_class_name(params.style_class);
 
         this.actor._delegate = this;
@@ -682,18 +699,18 @@ var GroupButton = class GnoMenu_GroupButton {
             this._iconSize = iconSize;
             // //this.icon = new St.Icon({icon_name: iconName, icon_size: iconSize, icon_type: St.IconType.SYMBOLIC});
             if (getCustIcon(iconName)) {
-                this.icon = new St.Icon({gicon: getCustIcon(iconName), icon_size: iconSize});
+                this.icon = new St.Icon({gicon: getCustIcon(iconName), icon_size: iconSize, x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER});
             } else {
-                this.icon = new St.Icon({icon_name: iconName, icon_size: iconSize});
+                this.icon = new St.Icon({icon_name: iconName, icon_size: iconSize, x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER});
             }
-            this.buttonbox.add(this.icon, {x_fill: false, y_fill: false,x_align: St.Align.MIDDLE, y_align: St.Align.MIDDLE});
+            this.buttonbox.add_child(this.icon);
         }
         if (labelText) {
-            this.label = new St.Label({ text: labelText, style_class: params.style_class+'-label' });
+            this.label = new St.Label({ text: labelText, style_class: params.style_class+'-label', x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER });
             // Use pango to wrap label text
             //this.label.clutter_text.line_wrap_mode = Pango.WrapMode.WORD;
             //this.label.clutter_text.line_wrap = true;
-            this.buttonbox.add(this.label, {x_fill: false, y_fill: false, x_align: St.Align.MIDDLE, y_align: St.Align.MIDDLE});
+            this.buttonbox.add_child(this.label);
         }
         this.actor.set_child(this.buttonbox);
 
@@ -770,17 +787,17 @@ class GnoMenu_PanelButton extends PanelMenu.Button {
 
         // Add icon to button
         if (iconName) {
-            let icon = new St.Icon({ gicon: null, style_class: 'system-status-icon gnomenu-panel-menu-icon' });
-            this._box.add(icon, {expand: true, x_align:St.Align.MIDDLE, y_align:St.Align.MIDDLE});
+            let icon = new St.Icon({ gicon: null, style_class: 'system-status-icon gnomenu-panel-menu-icon', x_expand: true, y_expand: true, x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER });
+            this._box.add_child(icon);
             icon.icon_name = iconName;
         }
 
         // Add label to button
         if (nameText && nameText.length > 0) {
-                let label = new St.Label({ text: ' '+nameText});
+                let label = new St.Label({ text: ' '+nameText, x_expand: true, y_expand: true, x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER});
                 let labelWrapper = new St.Bin();
                 labelWrapper.set_child(label);
-                this._box.add(labelWrapper, {expand: true, x_align:St.Align.MIDDLE, y_align:St.Align.MIDDLE});
+                this._box.add_child(labelWrapper); 
         }
     }
 });
@@ -799,12 +816,12 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
         // NOTE: can't get label to take using this method. Possible Gnome Shell bug?
         super._init(0.0, '');
 
-        this.actor.add_style_class_name('panel-button');
+        this.add_style_class_name('panel-button');
         this._bin = new St.Widget({ layout_manager: new Clutter.BinLayout() });
         this._box = new St.BoxLayout({ style_class: 'gnomenu-panel-menu-button' });
 
         this._bin.add_child(this._box);
-        this.actor.add_actor(this._bin);
+        this.add_actor(this._bin);
 
 
         // Add hotspot area 1px high at top of PanelMenuButton
@@ -819,8 +836,8 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
 
         // Add icon to button
         if (settings.get_boolean('use-panel-menu-icon')) {
-            let icon = new St.Icon({ gicon: null, style_class: 'system-status-icon gnomenu-panel-menu-icon' });
-            this._box.add(icon, {expand: true, x_align:St.Align.MIDDLE, y_align:St.Align.MIDDLE});
+            let icon = new St.Icon({ gicon: null, style_class: 'system-status-icon gnomenu-panel-menu-icon', x_expand: true, y_expand: true, x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER });
+            this._box.add_child(icon);
             if (settings.get_boolean('use-panel-menu-icon')) {
                 icon.icon_name = settings.get_strv('panel-menu-icon-name')[0];
             }
@@ -833,9 +850,9 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
         }
         if (labelText && labelText.length > 0) {
             let label = new St.Label({ text: ' '+labelText});
-            let labelWrapper = new St.Bin();
+            let labelWrapper = new St.Bin({x_expand: true, y_expand:true, x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER});
             labelWrapper.set_child(label);
-            this._box.add(labelWrapper, {expand: true, x_align:St.Align.MIDDLE, y_align:St.Align.MIDDLE});
+            this._box.add_child(labelWrapper);
         }
 
         // Add arrow to button
@@ -844,7 +861,7 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
         }
 
         this.menu.connect('open-state-changed', this._onOpenStateToggled.bind(this));
-        this.actor.connect('key-press-event', this._onPanelMenuKeyPress.bind(this));
+        this.connect('key-press-event', this._onPanelMenuKeyPress.bind(this));
         this.menu.actor.connect('key-press-event', this._onMenuKeyPress.bind(this));
 
         this.applicationsByCategory = {};
@@ -882,7 +899,6 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
 
     // handler for when PanelMenuButton hotspot enter event
     _onHotSpotEntered() {
-        if (_DEBUG_) global.log("PanelMenuButton: _onHotSpotEntered");
         let hoverDelay = settings.get_int('panel-menu-hotspot-delay');
         this._hoverTimeoutId = Mainloop.timeout_add((hoverDelay >0) ? hoverDelay : 0, () => {
             //if (!this.menu.isOpen) {
@@ -894,7 +910,6 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
 
     // handler for when PanelMenuButton hotspot leave event
     _onHotSpotExited() {
-        if (_DEBUG_) global.log("PanelMenuButton: _onHotSpotExited");
         if (this._hoverTimeoutId > 0) {
             Mainloop.source_remove(this._hoverTimeoutId);
         }
@@ -936,14 +951,14 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
             this.thumbnailsBoxFiller.width = 0;
             this.workspacesWrapper.height = height;
             this.thumbnailsBox._createThumbnails();
-            this.thumbnailsBox.actor.set_position(1, 0); // position inside wrapper
+            this.thumbnailsBox.set_position(1, 0); // position inside wrapper
             if (settings.get_boolean('hide-workspaces')) {
                 this.workspacesWrapper.width = 0;
-                this.thumbnailsBox.actor.hide();
+                this.thumbnailsBox.hide();
                 this.workspacesWrapper.hide();
             } else {
-                this.workspacesWrapper.width = this.thumbnailsBox.actor.width;
-                this.thumbnailsBox.actor.show();
+                this.workspacesWrapper.width = this.thumbnailsBox.width;
+                this.thumbnailsBox.show();
                 this.workspacesWrapper.show();
             }
 
@@ -1072,28 +1087,22 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
 
     _loadCategories(dir, root) {
         var rootDir = root;
-        //if (_DEBUG_) global.log("PanelMenuButton: _loadCategories - dir="+dir.get_menu_id()+" root="+rootDir);
         var iter = dir.iter();
         var nextType;
         while ((nextType = iter.next()) != GMenu.TreeItemType.INVALID) {
             if (nextType == GMenu.TreeItemType.ENTRY) {
-                //if (_DEBUG_) global.log("PanelMenuButton: _loadCategories - TreeItemType.ENTRY");
                 var entry = iter.get_entry();
                 if (!entry.get_app_info().get_nodisplay()) {
-                    //if (_DEBUG_) global.log("PanelMenuButton: _loadCategories - entry valid");
                     var app = Shell.AppSystem.get_default().lookup_app(entry.get_desktop_file_id());
                     if (rootDir) {
-                        //if (_DEBUG_) global.log("PanelMenuButton: _loadCategories - push root.get_menu_id = "+rootDir.get_menu_id());
                         if (rootDir.get_menu_id())
                             this.applicationsByCategory[rootDir.get_menu_id()].push(app);
                     } else {
-                        //if (_DEBUG_) global.log("PanelMenuButton: _loadCategories - push dir.get_menu_id = "+dir.get_menu_id());
                         if (dir.get_menu_id())
                             this.applicationsByCategory[dir.get_menu_id()].push(app);
                     }
                 }
             } else if (nextType == GMenu.TreeItemType.DIRECTORY) {
-                //if (_DEBUG_) global.log("PanelMenuButton: _loadCategories - TreeItemType.DIRECTORY");
                 if (rootDir) {
                     this._loadCategories(iter.get_directory(), rootDir);
                 } else {
@@ -1363,7 +1372,6 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
     }
 
     _listWebBookmarks(pattern) {
-        if (_DEBUG_) global.log("PanelMenuButton: _listWebBookmarks");
         if (!this._searchWebErrorsShown) {
             if (!Firefox.Gda) {
                 let notifyTitle = _("Gno-Menu: Search Firefox bookmarks disabled");
@@ -1583,9 +1591,6 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
         let minWidth = this.topPane.width - (this._widthCategoriesBox + this._widthShortcutsBox + this.workspacesWrapper.width);
         this.bottomPane.width = this.topPane.width;
 
-        if (_DEBUG_) global.log("topPane width = "+this.topPane.width);
-        if (_DEBUG_) global.log("shortcuts width = "+this.shortcutsScrollBox.width+" "+this._widthShortcutsBox);
-        if (_DEBUG_) global.log("category width = "+this.categoriesScrollBox.width+" "+this._widthCategoriesBox);
 
         let gridBoxBorder = {left:0,top:0,bottom:0,right:0};
         let gridBoxPadding = {left:0,top:0,bottom:0,right:0};
@@ -1615,7 +1620,7 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
                 let app = apps[0];
                 let appGridButton = new AppGridButton(app, appType, true);
                 let gridLayout = this.applicationsGridBox.layout_manager;
-				gridLayout.attach(appGridButton.actor, 0, 0, 1, 1);
+                gridLayout.attach(appGridButton.actor, 0, 0, 1, 1);
                 if (appGridButton.actor.get_stage()) {
                     let themeNode = appGridButton.actor.get_theme_node();
                     buttonMargin = {
@@ -1650,7 +1655,6 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
 
                     this._appGridButtonHeight = appGridButton.actor.height;
 
-                    if (_DEBUG_) global.log("buttonWidth = "+this._appGridButtonWidth+" ["+settings.get_int('apps-grid-icon-size')+"]["+settings.get_int('apps-grid-label-width')+"]["+themeNode.get_min_width()+"]");
                 }
             }
         }
@@ -1674,18 +1678,14 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
         }
 
         let iconSize = this._appGridButtonWidth + buttonMargin.left + buttonMargin.right + buttonBorder.left + buttonBorder.right + buttonPadding.left + buttonPadding.right;
-        if (_DEBUG_) global.log("icon size = "+iconSize +" ["+this._appGridButtonWidth+"]["+buttonMargin.left+"]["+buttonMargin.right+"]["+buttonBorder.left+"]["+buttonBorder.right+"]["+buttonPadding.left+"]["+buttonPadding.right+"]");
         let gridWidth = (iconSize * this._appGridColumns) + gridBoxBorder.left + gridBoxBorder.right + gridBoxPadding.left + gridBoxPadding.right;
-        if (_DEBUG_) global.log("gridbox width = "+gridWidth+" ["+this._appGridColumns+"] ["+gridBoxBorder.left+"]["+gridBoxBorder.right+"]["+gridBoxPadding.left+"]["+gridBoxPadding.right+"]");
         let scrollWidth = gridWidth + scrollBoxBorder.left + scrollBoxBorder.right + scrollBoxPadding.left + scrollBoxPadding.right;
 
-        if (_DEBUG_) global.log("scrollbox width = "+scrollWidth+" minWidth = "+minWidth +" ["+scrollBoxBorder.left+"]["+scrollBoxBorder.right+"]["+scrollBoxPadding.left+"]["+scrollBoxPadding.right+"]");
         if (scrollWidth >= minWidth) {
             this.applicationsScrollBox.width = scrollWidth;
         } else {
             this.applicationsScrollBox.width = minWidth;
             let extraWidth = minWidth - scrollWidth;
-            if (_DEBUG_) global.log("EXPAND extra width = "+extraWidth);
             let gridLayout = this.applicationsGridBox.layout_manager;
             gridLayout.set_column_spacing(extraWidth / (this._appGridColumns-1));
         }
@@ -1798,7 +1798,7 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
                            this.menu.close();
                         });
                         let gridLayout = this.applicationsGridBox.layout_manager;
-						gridLayout.attach(appGridButton.actor, column, rownum, 1, 1);
+                        gridLayout.attach(appGridButton.actor, column, rownum, 1, 1);
                         column ++;
                         if (column > this._appGridColumns-1) {
                             column = 0;
@@ -1882,7 +1882,7 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
                            this.menu.close();
                         });
                         let gridLayout = this.applicationsGridBox.layout_manager;
-						gridLayout.attach(appGridButton.actor, column, rownum, 1, 1);
+                        gridLayout.attach(appGridButton.actor, column, rownum, 1, 1);
                         column ++;
                         if (column > this._appGridColumns-1) {
                             column = 0;
@@ -1959,7 +1959,7 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
                            this.menu.close();
                         });
                         let gridLayout = this.applicationsGridBox.layout_manager;
-						gridLayout.attach(appGridButton.actor, column, rownum, 1, 1);
+                        gridLayout.attach(appGridButton.actor, column, rownum, 1, 1);
                         column ++;
                         if (column > this._appGridColumns-1) {
                             column = 0;
@@ -2034,8 +2034,8 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
         if (thumbnail == null)
             return;
 
-        // let [x, y] = thumbnail.actor.get_transformed_position();
-        let [w, h] = thumbnail.actor.get_transformed_size();
+        // let [x, y] = thumbnail.get_transformed_position();
+        let [w, h] = thumbnail.get_transformed_size();
         let [borderTop, borderBottom] = this.thumbnailsBox.getIndicatorBorders();
 
         let vscroll = this.workspacesScrollBox.get_vscroll_bar();
@@ -2044,12 +2044,12 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
         var scrollboxHeight = this.workspacesScrollBox.get_allocation_box().y2 - this.workspacesScrollBox.get_allocation_box().y1;
 
         var newScrollValue = currentScrollValue;
-        if (currentScrollValue > thumbnail.actor.y - borderTop) {
-            newScrollValue = thumbnail.actor.y - borderTop;
+        if (currentScrollValue > thumbnail.y - borderTop) {
+            newScrollValue = thumbnail.y - borderTop;
         }
 
-        if (scrollboxHeight + currentScrollValue < thumbnail.actor.y + h + borderBottom) {
-            newScrollValue = thumbnail.actor.y + h + borderBottom - scrollboxHeight;
+        if (scrollboxHeight + currentScrollValue < thumbnail.y + h + borderBottom) {
+            newScrollValue = thumbnail.y + h + borderBottom - scrollboxHeight;
         }
 
         vscroll.get_adjustment().set_value(newScrollValue);
@@ -2594,7 +2594,6 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
     }
 
     _display() {
-        if (_DEBUG_) global.log("PanelMenuButton: _display");
 
         // popupMenuSection holds the mainbox
         let section = new PopupMenu.PopupMenuSection();
@@ -2630,7 +2629,7 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
         this.categoriesWrapper = new St.BoxLayout({ style_class: 'gnomenu-categories-workspaces-wrapper', vertical: false});
 
         // categoriesScrollBox allows categories or workspaces to scroll vertically
-        this.categoriesScrollBox = new St.ScrollView({ reactive: true, x_fill: true, y_fill: false, y_align: St.Align.START, style_class: 'gnomenu-categories-workspaces-scrollbox' });
+        this.categoriesScrollBox = new St.ScrollView({ reactive: true, style_class: 'gnomenu-categories-workspaces-scrollbox', x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.START });
         let vscrollCategories = this.categoriesScrollBox.get_vscroll_bar();
         vscrollCategories.connect('scroll-start', () => {
             this.menu.passEvents = true;
@@ -2642,11 +2641,11 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
         this.categoriesScrollBox.set_mouse_scrolling(true);
 
         // selectedAppBox
-        this.selectedAppBox = new St.BoxLayout({ style_class: 'gnomenu-selected-app-box', vertical: false });
-        this.selectedAppTitle = new St.Label({ style_class: 'gnomenu-selected-app-title', text: "" });
-        this.selectedAppBox.add(this.selectedAppTitle, {expand: false, x_fill:false, y_fill:false, x_align:St.Align.MIDDLE, y_align:St.Align.MIDDLE});
-        this.selectedAppDescription = new St.Label({ style_class: 'gnomenu-selected-app-description', text: "" });
-        this.selectedAppBox.add(this.selectedAppDescription, {expand: false, x_fill:false, y_fill:false, x_align:St.Align.MIDDLE, y_align:St.Align.MIDDLE});
+        this.selectedAppBox = new St.BoxLayout({ style_class: 'gnomenu-selected-app-box', vertical: false, x_expand: true, y_expand: true, x_align:Clutter.ActorAlign.END, y_align:Clutter.ActorAlign.CENTER });
+        this.selectedAppTitle = new St.Label({ style_class: 'gnomenu-selected-app-title', text: "", x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER });
+        this.selectedAppBox.add_child(this.selectedAppTitle);
+        this.selectedAppDescription = new St.Label({ style_class: 'gnomenu-selected-app-description', text: "", x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER });
+        this.selectedAppBox.add_child(this.selectedAppDescription);
 
         // UserGroupBox
         this.userGroupBox = new St.BoxLayout({ style_class: 'gnomenu-user-group-box' });
@@ -2656,7 +2655,7 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
             userGroupButtonIconSize = 16;
 
         // Create 'recent' category button
-        this.recentCategory = new GroupButton( "folder-recent-symbolic", userGroupButtonIconSize, null, {style_class: 'gnomenu-user-group-button'});
+        this.recentCategory = new GroupButton( "folder-recent-symbolic", userGroupButtonIconSize, null, {style_class: 'gnomenu-user-group-button', x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER});
         this.recentCategory.setButtonEnterCallback(() => {
             this.recentCategory.actor.add_style_class_name('selected');
             this.selectedAppTitle.set_text(_('Recent'));
@@ -2687,7 +2686,7 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
         });
 
         // Create 'webBookmarks' category button
-        this.webBookmarksCategory = new GroupButton( "web-browser-symbolic", userGroupButtonIconSize, null, {style_class: 'gnomenu-user-group-button'});
+        this.webBookmarksCategory = new GroupButton( "web-browser-symbolic", userGroupButtonIconSize, null, {style_class: 'gnomenu-user-group-button', x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER});
         this.webBookmarksCategory.setButtonEnterCallback(() => {
             this.webBookmarksCategory.actor.add_style_class_name('selected');
             this.selectedAppTitle.set_text(_('WebBookmarks'));
@@ -2717,8 +2716,8 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
             }
         });
 
-        this.userGroupBox.add(this.recentCategory.actor, {x_fill:false, y_fill:false, x_align:St.Align.MIDDLE, y_align:St.Align.MIDDLE});
-        this.userGroupBox.add(this.webBookmarksCategory.actor, {x_fill:false, y_fill:false, x_align:St.Align.MIDDLE, y_align:St.Align.MIDDLE});
+        this.userGroupBox.add_child(this.recentCategory.actor);
+        this.userGroupBox.add_child(this.webBookmarksCategory.actor);
 
         if (settings.get_boolean('hide-useroptions')) {
             this.userGroupBox.hide();
@@ -2739,10 +2738,10 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
             viewModeAdditionalStyle = " no-useroptions";
         }
 
-        this.viewModeBoxWrapper = new St.BoxLayout({ style_class: 'gnomenu-view-mode-box-wrapper'+viewModeAdditionalStyle });
-        this.viewModeBox = new St.BoxLayout({ style_class: 'gnomenu-view-mode-box'+viewModeAdditionalStyle });
+        this.viewModeBoxWrapper = new St.BoxLayout({ style_class: 'gnomenu-view-mode-box-wrapper'+viewModeAdditionalStyle, x_align:Clutter.ActorAlign.START, y_align:Clutter.ActorAlign.CENTER });
+        this.viewModeBox = new St.BoxLayout({ style_class: 'gnomenu-view-mode-box'+viewModeAdditionalStyle, x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER });
 
-        this.toggleStartupAppsView = new GroupButton("view-toggle-apps-symbolic", viewModeButtonIconSize, null, {style_class: 'gnomenu-view-mode-button'});
+        this.toggleStartupAppsView = new GroupButton("view-toggle-apps-symbolic", viewModeButtonIconSize, null, {style_class: 'gnomenu-view-mode-button', x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER});
         this.toggleStartupAppsView.setButtonEnterCallback(() => {
             this.toggleStartupAppsView.actor.add_style_class_name('selected');
             this.selectedAppTitle.set_text(_('Toggle Startup Apps View'));
@@ -2769,7 +2768,7 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
         });
 
 
-        this.toggleListGridView = new GroupButton(viewModeButtonIcon, viewModeButtonIconSize, null, {style_class: 'gnomenu-view-mode-button'});
+        this.toggleListGridView = new GroupButton(viewModeButtonIcon, viewModeButtonIconSize, null, {style_class: 'gnomenu-view-mode-button', x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER});
         this.toggleListGridView.setButtonEnterCallback(() => {
             this.toggleListGridView.actor.add_style_class_name('selected');
             this.selectedAppTitle.set_text(_('List-Grid View'));
@@ -2797,9 +2796,9 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
             }
         });
 
-        this.viewModeBox.add(this.toggleStartupAppsView.actor, {x_fill:false, y_fill:false, x_align:St.Align.MIDDLE, y_align:St.Align.MIDDLE});
-        this.viewModeBox.add(this.toggleListGridView.actor, {x_fill:false, y_fill:false, x_align:St.Align.MIDDLE, y_align:St.Align.MIDDLE});
-        this.viewModeBoxWrapper.add(this.viewModeBox, {x_fill:false, y_fill:false, x_align:St.Align.MIDDLE, y_align:St.Align.MIDDLE});
+        this.viewModeBox.add_child(this.toggleStartupAppsView.actor);
+        this.viewModeBox.add_child(this.toggleListGridView.actor);
+        this.viewModeBoxWrapper.add_child(this.viewModeBox);
 
         // SearchBox
         let searchEntryAdditionalStyle = "";
@@ -2822,15 +2821,19 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
 
         this._searchInactiveIcon = new St.Icon({ style_class: 'search-entry-icon', icon_name: 'edit-find-symbolic' });
         this._searchActiveIcon = new St.Icon({ style_class: 'search-entry-icon', icon_name: 'edit-clear-symbolic' });
-        this.searchBox = new St.BoxLayout({ style_class: 'gnomenu-search-box'+searchEntryAdditionalStyle });
+        this.searchBox = new St.BoxLayout({ style_class: 'gnomenu-search-box'+searchEntryAdditionalStyle, x_expand: true, y_expand: true, x_align:Clutter.ActorAlign.END, y_align:Clutter.ActorAlign.CENTER });
         this.searchEntry = new St.Entry({ name: 'gnomenuSearchEntry',
                                      style_class: 'search-entry gnomenu-search-entry'+searchEntryAdditionalStyle,
                                      hint_text: "",
                                      track_hover: true,
-                                     can_focus: true });
+                                     can_focus: true, 
+                                     x_expand: true,
+                                     y_expand: true,
+                                     x_align:Clutter.ActorAlign.START,
+                                     y_align:Clutter.ActorAlign.START });
 
         this.searchEntry.set_primary_icon(this._searchInactiveIcon);
-        this.searchBox.add(this.searchEntry, {expand: true, x_align:St.Align.START, y_align:St.Align.START});
+        this.searchBox.add_child(this.searchEntry);
         this.searchActive = false;
         this.searchEntryText = this.searchEntry.clutter_text;
         this.searchEntryText.connect('text-changed', this._onSearchTextChanged.bind(this));
@@ -2840,7 +2843,7 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
 
         // ShortcutsBox
         this.shortcutsBox = new St.BoxLayout({ style_class: 'gnomenu-shortcuts-box', vertical: true });
-        this.shortcutsScrollBox = new St.ScrollView({ x_fill: true, y_fill: false, y_align: St.Align.START, style_class: 'gnomenu-shortcuts-scrollbox' });
+        this.shortcutsScrollBox = new St.ScrollView({style_class: 'gnomenu-shortcuts-scrollbox', x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.START });
         let vscrollShortcuts = this.shortcutsScrollBox.get_vscroll_bar();
         vscrollShortcuts.connect('scroll-start', () => {
             this.menu.passEvents = true;
@@ -2858,7 +2861,6 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
         }
 
         //Load Favorites
-        if (_DEBUG_) global.log("PanelMenuButton: _display - start loading favorites");
         this.favorites = [];
         let launchers = global.settings.get_strv('favorite-apps');
         for (let i = 0; i < launchers.length; ++i) {
@@ -2866,7 +2868,6 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
             if (app)
                 this.favorites.push(app);
         }
-        if (_DEBUG_) global.log("PanelMenuButton: _display - end loading favorites");
 
         // Load Frequent Apps
         let mostUsed = Shell.AppUsage.get_default().get_most_used();
@@ -2882,10 +2883,8 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
             } else {
                 this.placesManager = new PlaceDisplay.PlacesManager(false);
             }
-            if (_DEBUG_) global.log("PanelMenuButton: _display - initialized PlacesManager")
         } else {
             this.placesManager = null;
-            if (_DEBUG_) global.log("PanelMenuButton: _display - no PlacesManager")
         }
 
         // Load Shortcuts Panel
@@ -2944,16 +2943,15 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
         }
 
         // // Workspaces thumbnails Box and Wrapper
-        this.thumbnailsBoxFiller = new St.BoxLayout({ style_class: 'gnomenu-workspaces-filler', vertical: true });
+        this.thumbnailsBoxFiller = new St.BoxLayout({ style_class: 'gnomenu-workspaces-filler', vertical: true, x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.START });
         // this.thumbnailsBox = new St.BoxLayout({ style_class: 'gnomenu-workspaces-filler', vertical: true });
         this.thumbnailsBox = new WorkspaceThumbnail.MyThumbnailsBox(settings, this.menu, this.thumbnailsBoxFiller);
-        this.workspacesWrapper = new St.BoxLayout({ style_class: 'gnomenu-workspaces-wrapper' });
-        this.workspacesWrapper.add(this.thumbnailsBoxFiller, {x_fill:false, y_fill: false, x_align: St.Align.START, y_align: St.Align.START});
-        // this.workspacesWrapper.add(this.thumbnailsBox, {x_fill:false, y_fill: false, x_align: St.Align.START, y_align: St.Align.START});
-        this.workspacesWrapper.add(this.thumbnailsBox.actor, {x_fill:false, y_fill: false, x_align: St.Align.START, y_align: St.Align.START});
+        this.workspacesWrapper = new St.BoxLayout({ style_class: 'gnomenu-workspaces-wrapper', x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.START });
+        this.workspacesWrapper.add_child(this.thumbnailsBoxFiller);
+        this.workspacesWrapper.add_child(this.thumbnailsBox);
 
         // // workspacesScrollBox allows workspace thumbnails to scroll vertically
-        this.workspacesScrollBox = new St.ScrollView({ reactive: true, x_fill: true, y_fill: false, y_align: St.Align.START, style_class: 'gnomenu-workspaces-scrollbox' });
+        this.workspacesScrollBox = new St.ScrollView({ reactive: true, style_class: 'gnomenu-workspaces-scrollbox', x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.START });
         this.workspacesScrollBox.connect('scroll-event', this._onWorkspacesScrolled.bind(this));
         // let vscrollWorkspaces = this.workspacesScrollBox.get_vscroll_bar();
         // vscrollWorkspaces.connect('scroll-start', () => {
@@ -2967,7 +2965,7 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
         // this.workspacesScrollBox.set_mouse_scrolling(true);
 
         // CategoriesBox
-        this.categoriesBox = new St.BoxLayout({ style_class: 'gnomenu-categories-box', vertical: true });
+        this.categoriesBox = new St.BoxLayout({ style_class: 'gnomenu-categories-box', vertical: true, x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.START });
 
         // Initialize application categories
         this.applicationsByCategory = {};
@@ -3105,7 +3103,6 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
         this.categoriesBox.add_actor(favAppCategory.actor);
 
         // Load rest of categories
-        if (_DEBUG_) global.log("PanelMenuButton: _display - start loading categories");
         let tree = new GMenu.Tree({ menu_basename: 'applications.menu' });
         tree.load_sync();
         let root = tree.get_root_directory();
@@ -3161,7 +3158,6 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
                 }
             }
         }
-        if (_DEBUG_) global.log("PanelMenuButton: _display - end loading categories");
 
         // PowerGroupBox
         this.powerGroupBox = new St.BoxLayout({ style_class: 'gnomenu-power-group-box'});
@@ -3169,7 +3165,7 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
         if (settings.get_enum('menu-layout') == MenuLayout.COMPACT)
             powerGroupButtonIconSize = 16;
 
-        this.systemRestart = new GroupButton('refresh-symbolic', powerGroupButtonIconSize, null, {style_class: 'gnomenu-power-group-button'});
+        this.systemRestart = new GroupButton('refresh-symbolic', powerGroupButtonIconSize, null, {style_class: 'gnomenu-power-group-button', x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER});
         this.systemRestart.setButtonEnterCallback(() => {
             this.systemRestart.actor.add_style_class_name('selected');
             this.selectedAppTitle.set_text(_('Restart Shell'));
@@ -3192,7 +3188,7 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
             this.menu.close();
             global.reexec_self();
         });
-        this.systemSuspend = new GroupButton('suspend-symbolic', powerGroupButtonIconSize, null, {style_class: 'gnomenu-power-group-button'});
+        this.systemSuspend = new GroupButton('suspend-symbolic', powerGroupButtonIconSize, null, {style_class: 'gnomenu-power-group-button', x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER});
         this.systemSuspend.setButtonEnterCallback(() => {
             this.systemSuspend.actor.add_style_class_name('selected');
             this.selectedAppTitle.set_text(_('Suspend'));
@@ -3223,7 +3219,7 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
                     }
             });
         });
-        this.systemShutdown = new GroupButton('shutdown-symbolic', powerGroupButtonIconSize, null, {style_class: 'gnomenu-power-group-button'});
+        this.systemShutdown = new GroupButton('shutdown-symbolic', powerGroupButtonIconSize, null, {style_class: 'gnomenu-power-group-button', x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER});
         this.systemShutdown.setButtonEnterCallback(() => {
             this.systemShutdown.actor.add_style_class_name('selected');
             this.selectedAppTitle.set_text(_('Shutdown'));
@@ -3248,7 +3244,7 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
             this.menu.close();
             this._session.ShutdownRemote();
         });
-        this.logoutUser = new GroupButton('user-logout-symbolic', powerGroupButtonIconSize, null, {style_class: 'gnomenu-power-group-button'});
+        this.logoutUser = new GroupButton('user-logout-symbolic', powerGroupButtonIconSize, null, {style_class: 'gnomenu-power-group-button', x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER});
         this.logoutUser.setButtonEnterCallback(() => {
             this.logoutUser.actor.add_style_class_name('selected');
             this.selectedAppTitle.set_text(_('Logout User'));
@@ -3271,7 +3267,7 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
             this.menu.close();
             this._session.LogoutRemote(0);
         });
-        this.lockScreen = new GroupButton('user-lock-symbolic', powerGroupButtonIconSize, null, {style_class: 'gnomenu-power-group-button'});
+        this.lockScreen = new GroupButton('user-lock-symbolic', powerGroupButtonIconSize, null, {style_class: 'gnomenu-power-group-button', x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER});
         this.lockScreen.setButtonEnterCallback(() => {
             this.lockScreen.actor.add_style_class_name('selected');
             this.selectedAppTitle.set_text(_('Lock Screen'));
@@ -3296,14 +3292,14 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
             Main.screenShield.lock(true);
         });
 
-        this.powerGroupBox.add(this.systemRestart.actor, {x_fill:false, y_fill:false, x_align:St.Align.MIDDLE, y_align:St.Align.MIDDLE});
-        this.powerGroupBox.add(this.systemSuspend.actor, {x_fill:false, y_fill:false, x_align:St.Align.MIDDLE, y_align:St.Align.MIDDLE});
-        this.powerGroupBox.add(this.systemShutdown.actor, {x_fill:false, y_fill:false, x_align:St.Align.MIDDLE, y_align:St.Align.MIDDLE});
-        this.powerGroupBox.add(this.logoutUser.actor, {x_fill:false, y_fill:false, x_align:St.Align.MIDDLE, y_align:St.Align.MIDDLE});
-        this.powerGroupBox.add(this.lockScreen.actor, {x_fill:false, y_fill:false, x_align:St.Align.MIDDLE, y_align:St.Align.MIDDLE});
+        this.powerGroupBox.add_child(this.systemRestart.actor);
+        this.powerGroupBox.add_child(this.systemSuspend.actor);
+        this.powerGroupBox.add_child(this.systemShutdown.actor);
+        this.powerGroupBox.add_child(this.logoutUser.actor);
+        this.powerGroupBox.add_child(this.lockScreen.actor);
 
         // ApplicationsBox (ListView / GridView)
-        this.applicationsScrollBox = new St.ScrollView({ x_fill: true, y_fill: false, y_align: St.Align.START, style_class: 'vfade gnomenu-applications-scrollbox' });
+        this.applicationsScrollBox = new St.ScrollView({ style_class: 'vfade gnomenu-applications-scrollbox', x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.START });
         this.applicationsScrollBox.connect('scroll-event', this._onAplicationsScrolled.bind(this));
         let vscrollApplications = this.applicationsScrollBox.get_vscroll_bar();
         vscrollApplications.connect('scroll-start', () => {
@@ -3313,23 +3309,23 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
             this.menu.passEvents = false;
         });
 
-        this.applicationsListBox = new St.BoxLayout({ style_class: 'gnomenu-applications-list-box', vertical:true, x_expand:true});
-        this.applicationsGridBox = new St.Widget({ layout_manager: new Clutter.GridLayout(), reactive:true, style_class: 'gnomenu-applications-grid-box'});
+        this.applicationsListBox = new St.BoxLayout({ style_class: 'gnomenu-applications-list-box', vertical: true, x_expand: true, x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.START});
+        this.applicationsGridBox = new St.Widget({ layout_manager: new Clutter.GridLayout(), reactive:true, style_class: 'gnomenu-applications-grid-box', x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.START});
         this.applicationsBoxWrapper = new St.BoxLayout({ style_class: 'gnomenu-applications-box-wrapper' });
-        this.applicationsBoxWrapper.add(this.applicationsGridBox, {x_fill:false, y_fill: false, x_align: St.Align.START, y_align: St.Align.START});
-        this.applicationsBoxWrapper.add(this.applicationsListBox, {x_fill:false, y_fill: false, x_align: St.Align.START, y_align: St.Align.START});
+        this.applicationsBoxWrapper.add_child(this.applicationsGridBox);
+        this.applicationsBoxWrapper.add_child(this.applicationsListBox);
         this.applicationsScrollBox.add_actor(this.applicationsBoxWrapper);
         this.applicationsScrollBox.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
         this.applicationsScrollBox.set_mouse_scrolling(true);
 
 
         // Extension Preferences
-        this.preferencesGroupBox = new St.BoxLayout({ style_class: 'gnomenu-preferences-group-box'});
+        this.preferencesGroupBox = new St.BoxLayout({ style_class: 'gnomenu-preferences-group-box', x_align:Clutter.ActorAlign.END, y_align:Clutter.ActorAlign.CENTER});
         let preferencesGroupButtonIconSize = 18;
         if (settings.get_enum('menu-layout') == MenuLayout.COMPACT)
             preferencesGroupButtonIconSize = 16;
 
-        this.extensionPreferences = new GroupButton('control-center-alt-symbolic', preferencesGroupButtonIconSize, null, {style_class: 'gnomenu-preferences-group-button'});
+        this.extensionPreferences = new GroupButton('control-center-alt-symbolic', preferencesGroupButtonIconSize, null, {style_class: 'gnomenu-preferences-group-button', x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER});
         this.extensionPreferences.setButtonEnterCallback(() => {
             this.extensionPreferences.actor.add_style_class_name('selected');
             this.selectedAppTitle.set_text(_('Preferences'));
@@ -3352,7 +3348,7 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
             Util.trySpawnCommandLine(PREFS_DIALOG);
             this.menu.close();
         });
-        this.preferencesGroupBox.add(this.extensionPreferences.actor, {x_fill:false, y_fill:false, x_align:St.Align.MIDDLE, y_align:St.Align.MIDDLE});
+        this.preferencesGroupBox.add_child(this.extensionPreferences.actor);
 
 
         // Place boxes in proper containers. The order added determines position
@@ -3361,10 +3357,10 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
         // topPane packs horizontally
         this.topPane.add(this.powerGroupBox);
         this.topPane.add(this.userGroupBox);
-        this.topPane.add(this.viewModeBoxWrapper, {x_align:St.Align.START, y_align:St.Align.MIDDLE});
-        this.topPane.add(this.searchBox, {expand: true, x_align:St.Align.END, y_align:St.Align.MIDDLE});
+        this.topPane.add_child(this.viewModeBoxWrapper);
+        this.topPane.add_child(this.searchBox);
 
-        this.categoriesWrapper.add(this.categoriesBox, {x_fill:false, y_fill: false, x_align: St.Align.START, y_align: St.Align.START});
+        this.categoriesWrapper.add_child(this.categoriesBox);
         this.categoriesScrollBox.add_actor(this.categoriesWrapper);
 
         if (settings.get_boolean('hide-categories')) {
@@ -3375,20 +3371,20 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
         }
 
         // middlePane packs horizontally
-        middlePane.add(this.shortcutsScrollBox, {x_fill:false, y_fill: false, x_align: St.Align.START, y_align: St.Align.START});
-        middlePane.add(this.categoriesScrollBox, {x_fill:false, y_fill: false, x_align: St.Align.START, y_align: St.Align.START});
-        middlePane.add(this.applicationsScrollBox, {x_fill:false, y_fill: false, x_align: St.Align.START, y_align: St.Align.START});
-        middlePane.add(this.workspacesScrollBox, {x_fill:false, y_fill: false, x_align: St.Align.START, y_align: St.Align.START});
-        // middlePane.add(this.workspacesWrapper, {x_fill:false, y_fill: false, x_align: St.Align.START, y_align: St.Align.START});
+        middlePane.add_child(this.shortcutsScrollBox);
+        middlePane.add_child(this.categoriesScrollBox);
+        middlePane.add_child(this.applicationsScrollBox);
+        middlePane.add_child(this.workspacesScrollBox);
+        // middlePane.add_child(this.workspacesWrapper);
 
         // bottomPane packs horizontally
-        let bottomPaneSpacer1 = new St.Label({text: '', style_class: 'gnomenu-spacer'});
+        let bottomPaneSpacer1 = new St.Label({text: '', style_class: 'gnomenu-spacer', x_expand: true, y_expand: true, x_align:Clutter.ActorAlign.CENTER, y_align:Clutter.ActorAlign.CENTER});
         this.bottomPane.add(this._dummyButton);
         this.bottomPane.add(this._dummyButton2);
         this.bottomPane.add(this._dummyBox1);
         this.bottomPane.add(this._dummyBox2);
-        this.bottomPane.add(bottomPaneSpacer1, {expand: true, x_align:St.Align.MIDDLE, y_align:St.Align.MIDDLE});
-        this.bottomPane.add(this.selectedAppBox, {expand: false, x_align:St.Align.END, y_align:St.Align.MIDDLE});
+        this.bottomPane.add_child(bottomPaneSpacer1);
+        this.bottomPane.add_child(this.selectedAppBox);
 
         let bShowPreferences = true;
         try {
@@ -3406,7 +3402,7 @@ class GnoMenu_PanelMenuButton extends PanelMenu.Button {
             global.log(err.message.toString());
         }
         if (bShowPreferences) {
-            this.topPane.add(this.preferencesGroupBox, {x_fill:false, y_fill: false, x_align:St.Align.END, y_align:St.Align.MIDDLE});
+            this.topPane.add_child(this.preferencesGroupBox);
         }
 
 
@@ -3445,7 +3441,7 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
         this._themeChangedId = St.ThemeContext.get_for_stage(global.stage).connect('changed', this._onStyleChanged.bind(this));
 
         // Connect gtk icontheme for when icons change
-        this._iconsChangedId = null; //IconTheme.get_default().connect('changed', this._onIconsChanged.bind(this));
+        this._iconsChangedId = IconTheme.get_default().connect('changed', this._onIconsChanged.bind(this));
 
         // Connect to AppSys for when new application installed
         this._installedChangedId = Shell.AppSystem.get_default().connect('installed-changed', this._onAppInstalledChanged.bind(this));
@@ -3470,8 +3466,7 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
     }
 
     updateCornerPanel() {
-        if (_DEBUG_) global.log("GnoMenuButton: updateCornerPanel");
-        if (Main.panel.actor.get_text_direction() == Clutter.TextDirection.RTL) {
+        if (Main.panel.get_text_direction() == Clutter.TextDirection.RTL) {
             Main.panel._leftCorner.setStyleParent(Main.panel._rightBox);
             Main.panel._rightCorner.setStyleParent(Main.panel._leftBox);
         } else {
@@ -3481,7 +3476,6 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
     }
 
     updateHotCorner(source, init) {
-        if (_DEBUG_) global.log("GnoMenuButton: updateHotCorner");
         let primary = Main.layoutManager.primaryIndex;
         let corner = Main.layoutManager.hotCorners[primary];
 
@@ -3491,35 +3485,28 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
 
         // Disable or Enable Hot Corner
         if (settings.get_boolean('disable-activities-hotcorner')) {
-            if (_DEBUG_) global.log("GnoMenuButton: updateHotCorner disabled hot corner");
-            if (corner && corner.actor) {
+            if (corner) {
                 // This is GS 3.8+ fallback corner. Need to hide actor
                 // to keep from triggering overview
-                if (_DEBUG_) global.log("GnoMenuButton: updateHotCorner corner & actor exist - HIDE");
-                corner.actor.hide();
+                corner.hide();
             } else {
                 // Need to destroy corner to remove pressure barrier
                 // to keep from triggering overview
                 if (corner && corner._pressureBarrier) {
-                    if (_DEBUG_) global.log("GnoMenuButton: updateHotCorner corner & pressureBarrier exist - DESTROY");
                     Main.layoutManager.hotCorners.splice(primary, 1);
                     corner.destroy();
                 }
             }
         } else {
-            if (_DEBUG_) global.log("GnoMenuButton: updateHotCorner enabled hot corner");
-            if (corner && corner.actor) {
+            if (corner) {
                 // This is Gs 3.8+ fallback corner. Need to show actor
                 // to trigger overview
-                if (_DEBUG_) global.log("GnoMenuButton: updateHotCorner corner & actor exist ");
-                corner.actor.show();
+                corner.show();
             } else {
                 // Need to create corner to setup pressure barrier
                 // to trigger overview
                 if (corner && corner._pressureBarrier) {
-                    if (_DEBUG_) global.log("GnoMenuButton: updateHotCorner corner & pressureBarrier exist - SHOW");
                 } else {
-                    if (_DEBUG_) global.log("GnoMenuButton: updateHotCorner corner & pressureBarrier don't exist - updateHotCorners");
                     Main.layoutManager._updateHotCorners();
                 }
             }
@@ -3527,7 +3514,6 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
     }
 
     refresh() {
-        if (_DEBUG_) global.log("GnoMenuButton: refresh");
         this._clearAll();
         this._display();
         this.updateCornerPanel();
@@ -3535,25 +3521,20 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
     }
 
     _clearAll() {
-        if (_DEBUG_) global.log("GnoMenuButton: _clearAll");
         if (this._hotCorner) this.actor.remove_actor(this._hotCorner.actor);
         if (this._hotCorner) this._hotCorner.destroy();
         this._hotCorner = null;
-        if (_DEBUG_) global.log("GnoMenuButton: _clearAll removed and destroyed hotcorner from gnomenubutton actor");
 
         if (this.viewButton) this.actor.remove_actor(this.viewButton.container);
         if (this.appsButton) this.actor.remove_actor(this.appsButton.container);
         if (this.appsMenuButton) this.actor.remove_actor(this.appsMenuButton.container);
 
-        if (_DEBUG_) global.log("GnoMenuButton: _clearAll removed panel buttons from gnomenubutton actor");
 
         if (this.viewButton) this.viewButton.actor.destroy();
         this.viewButton = null;
-        if (_DEBUG_) global.log("GnoMenuButton: _clearAll destroyed view button");
 
         if (this.appsButton) this.appsButton.actor.destroy();
         this.appsButton = null;
-        if (_DEBUG_) global.log("GnoMenuButton: _clearAll destroyed apps button");
 
         if (this.appsMenuButton) {
             // Unbind menu accelerator key
@@ -3561,11 +3542,9 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
             this.appsMenuButton.destroy();
         }
         this.appsMenuButton = null;
-        if (_DEBUG_) global.log("GnoMenuButton: _clearAll destroyed menu button");
     }
 
     _display() {
-        if (_DEBUG_) global.log("GnoMenuButton: _display");
         // Initialize view button
         if (!settings.get_boolean('hide-panel-view')) {
             let viewLabel = null;
@@ -3579,7 +3558,6 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
             this.viewButton = new PanelButton(viewLabel, viewIcon);
             this.viewButton.actor.connect('button-release-event', this._onViewButtonRelease.bind(this));
         }
-        if (_DEBUG_) global.log("GnoMenuButton: _display initialized view button");
 
         // Initialize apps button
         if (!settings.get_boolean('hide-panel-apps')) {
@@ -3594,12 +3572,10 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
             this.appsButton = new PanelButton(appsLabel, appsIcon);
             this.appsButton.actor.connect('button-release-event', this._onAppsButtonRelease.bind(this));
         }
-        if (_DEBUG_) global.log("GnoMenuButton: _display initialized apps button");
 
         // Initialize apps menu button
         if (!settings.get_boolean('hide-panel-menu')) {
             this.appsMenuButton = new PanelMenuButton();
-            if (_DEBUG_) global.log("GnoMenuButton: _display initialized menu button");
 
             // Bind menu accelerator key
             if (!settings.get_boolean('disable-panel-menu-keyboard')) {
@@ -3626,7 +3602,6 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
             if (this.appsMenuButton) this.actor.add(this.appsMenuButton.container);
 
         // if (this.appsMenuButton) this.actor.add(this.appsMenuButton.container);
-        if (_DEBUG_) global.log("GnoMenuButton: _display added buttons to gnomenubutton actor");
 
         // Detect if hot corners have been updated
         this._hotCornersUpdatedId = Main.layoutManager.connect("hot-corners-changed", this.updateHotCorner.bind(this));
@@ -3637,7 +3612,6 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
 
     // handler for when view panel button clicked
     _onViewButtonRelease() {
-        if (_DEBUG_) global.log("GnoMenuButton: _onViewButtonRelease");
         if (Main.overview.visible) {
             if (!Main.overview.viewSelector._showAppsButton.checked) {
                 Main.overview.hide();
@@ -3655,7 +3629,6 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
 
     // handler for when apps panel button clicked
     _onAppsButtonRelease() {
-        if (_DEBUG_) global.log("GnoMenuButton: _onAppsButtonRelease");
         if (Main.overview.visible) {
             if (Main.overview.viewSelector._showAppsButton.checked) {
                 Main.overview.hide();
@@ -3718,7 +3691,6 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
 
     // function called during init to position hot corner for GS 3.4-GS3.6
     _positionHotCorner() {
-        if (_DEBUG_) global.log("GnoMenuButton: _positionHotCorner");
         // The hot corner needs to be outside any padding/alignment
         // that has been imposed on us
         let primary = Main.layoutManager.primaryMonitor;
@@ -3743,7 +3715,6 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
 
     // handler for when theme changes
     _onStyleChanged() {
-        if (_DEBUG_) global.log("GnoMenuButton: _onStyleChanged");
         let ret = this._changeStylesheet();
         //if (ret) {
             //if (this.appsMenuButton) this.appsMenuButton.actor.grab_key_focus();
@@ -3755,7 +3726,6 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
     }
 
     _changeStylesheet() {
-        if (_DEBUG_) global.log("GnoMenuButton: _changeStylesheet");
         // Get menu layout
         let ml = "-m";
         if (settings.get_enum('menu-layout') == MenuLayout.COMPACT)
@@ -3771,7 +3741,6 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
 
         // Get theme directory
         let themeDirectory = themeStylesheet.get_path() ? GLib.path_get_dirname(themeStylesheet.get_path()) : "";
-        if (_DEBUG_) global.log("GnoMenuButton: _changedStylesheet new theme = "+themeStylesheet);
 
         // Test for gnomenu stylesheet
         let newStylesheet = null;
@@ -3779,7 +3748,6 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
             newStylesheet = Gio.file_new_for_path(themeDirectory + '/extensions/gno-menu/' + filename);
 
         if (!newStylesheet || !newStylesheet.query_exists(null)) {
-            if (_DEBUG_) global.log("GnoMenuButton: _chengeStylesheet Theme does_hotCornersUpdatedIdn't support gnomenu .. use default stylesheet");
             let defaultStylesheet = Gio.File.new_for_path(Me.path + "/themes/default/" + filename);
             if (defaultStylesheet.query_exists(null)) {
                 newStylesheet = defaultStylesheet;
@@ -3789,7 +3757,6 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
         }
 
         if (GnoMenuStylesheet && GnoMenuStylesheet.equal(newStylesheet)) {
-            if (_DEBUG_) global.log("GnoMenuButton: _changeStylesheet No change in stylesheet. Exit");
             return false;
         }
 
@@ -3798,12 +3765,10 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
         if (!themeContext)
             return false;
 
-        if (_DEBUG_) global.log("GnoMenuButton: _changeStylesheet themeContext is valid");
         let theme = themeContext.get_theme();
         if (!theme)
             return false;
 
-        if (_DEBUG_) global.log("GnoMenuButton: _changeStylesheet theme is valid");
         let customStylesheets = theme.get_custom_stylesheets();
         if (!customStylesheets)
             return false;
@@ -3818,9 +3783,7 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
             }
         }
 
-        if (_DEBUG_) global.log("GnoMenuButton: _changeStylesheet Removed previous stylesheet");
         newTheme.load_stylesheet(GnoMenuStylesheet);
-        if (_DEBUG_) global.log("GnoMenuButton: _changeStylesheet Added new stylesheet");
         themeContext.set_theme (newTheme);
         if (this.appsMenuButton) this.appsMenuButton.refresh();
 
@@ -3829,25 +3792,21 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
 
     // handler for when new application installed
     _onAppInstalledChanged() {
-        if (_DEBUG_) global.log("GnoMenuButton: _onAppInstalledChanged");
         if (this.appsMenuButton) this.appsMenuButton.refresh();
     }
 
     // handler for when favorites change
     _onFavoritesChanged() {
-        if (_DEBUG_) global.log("GnoMenuButton: _onFavoritesChanged");
         if (this.appsMenuButton) this.appsMenuButton.refresh();
     }
 
     // handler for when icons change
     _onIconsChanged() {
-        if (_DEBUG_) global.log("GnoMenuButton: _onIconsChanged");
         if (this.appsMenuButton) this.appsMenuButton.refresh();
     }
 
     // function to bind preference setting changes
     _bindSettingsChanges() {
-        if (_DEBUG_) global.log("GnoMenuButton: _bindSettingsChanges");
         settings.connect('changed::hide-panel-view', this.refresh.bind(this));
         settings.connect('changed::disable-activities-hotcorner', this.refresh.bind(this));
         settings.connect('changed::use-panel-view-label', this.refresh.bind(this));
@@ -3903,28 +3862,28 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
     destroy() {
         // Disconnect global signals
         if (this._installedChangedId)
-            Shell.AppSystem.get_default().disconnect(this._installedChangedId);
+            disconnect(Shell.AppSystem.get_default(), this._installedChangedId);
 
         if (this._favoritesChangedId)
-            AppFavorites.getAppFavorites().disconnect(this._favoritesChangedId);
+            disconnect(AppFavorites.getAppFavorites(),this._favoritesChangedId);
 
         if (this._iconsChangedId)
-            IconTheme.get_default().disconnect(this._iconsChangedId);
+            disconnect(IconTheme.get_default(), this._iconsChangedId);
 
         if (this._themeChangedId)
-            St.ThemeContext.get_for_stage(global.stage).disconnect(this._themeChangedId);
+            disconnect(St.ThemeContext.get_for_stage(global.stage), this._themeChangedId);
 
         if (this._overviewShownId)
-            Main.overview.disconnect(this._overviewShownId);
+            disconnect(Main.overview, this._overviewShownId);
 
         if (this._overviewHiddenId)
-            Main.overview.disconnect(this._overviewHiddenId);
+            disconnect(Main.overview, this._overviewHiddenId);
 
         if (this._overviewPageChangedId)
-            Main.overview.disconnect(this._overviewPageChangedId);
+            disconnect(Main.overview, this._overviewPageChangedId);
 
         if (this._hotCornersUpdatedId)
-            Main.layoutManager.disconnect(this._hotCornersUpdatedId);
+            disconnect(Main.layoutManager, this._hotCornersUpdatedId);
 
         // Unbind menu accelerator key
         Main.wm.removeKeybinding('panel-menu-keyboard-accelerator');
@@ -3941,7 +3900,6 @@ var GnoMenuButton = class GnoMenu_GnoMenuPanelButton {
 
 
 function loadStylesheet() {
-    if (_DEBUG_) global.log("GnoMenu Extension: loadStylesheet");
     // Get menu layout
     let ml = "-m";
     if (settings.get_enum('menu-layout') == MenuLayout.COMPACT)
@@ -3963,7 +3921,6 @@ function loadStylesheet() {
         GnoMenuStylesheet = Gio.file_new_for_path(themeDirectory + '/extensions/gno-menu/' + filename);
 
     if (!GnoMenuStylesheet || !GnoMenuStylesheet.query_exists(null)) {
-        if (_DEBUG_) global.log("GnoMenu Extension: Theme doesn't support gnomenu .. use default stylesheet");
         let defaultStylesheet = Gio.File.new_for_path(Me.path + "/themes/default/" + filename);
         if (defaultStylesheet.query_exists(null)) {
             GnoMenuStylesheet = defaultStylesheet;
@@ -3986,7 +3943,6 @@ function loadStylesheet() {
 }
 
 function unloadStylesheet() {
-    if (_DEBUG_) global.log("GnoMenu Extension: unloadStylesheet");
     let themeContext = St.ThemeContext.get_for_stage(global.stage);
     if (!themeContext)
         return false;
@@ -4014,7 +3970,6 @@ let GnoMenuStylesheet = null;
 
 function enable() {
 
-    if (_DEBUG_) global.log("GnoMenu Extension: ENABLE");
     // Load stylesheet
     loadStylesheet();
 
@@ -4022,7 +3977,7 @@ function enable() {
     if (hideDefaultActivitiesButton) {
         let button = Main.panel.statusArea['activities'];
         if (button != null) {
-            button.actor.hide();
+            button.hide();
         }
     }
 
@@ -4036,7 +3991,6 @@ function enable() {
 
 function disable() {
 
-    if (_DEBUG_) global.log("GnoMenu Extension: DISABLE");
     // Unload stylesheet
     unloadStylesheet();
 
@@ -4044,7 +3998,7 @@ function disable() {
     if (hideDefaultActivitiesButton) {
         let button = Main.panel.statusArea['activities'];
         if (button) {
-            button.actor.show();
+            button.show();
         }
     }
 

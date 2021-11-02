@@ -6,7 +6,6 @@
  * ========================================================================================================
  */
 
-const _DEBUG_ = false;
 
 const GLib = imports.gi.GLib;
 const Gio = imports.gi.Gio;
@@ -37,13 +36,9 @@ var PlaceInfo = class GnoMenu_PlaceInfo {
     _init(kind, file, name, icon) {
         this.kind = kind;
         this.file = file;
-        if (_DEBUG_) global.log("PlacesInfo: _init - kind = "+kind);
-        if (_DEBUG_) global.log("PlacesInfo: _init - file = "+file);
         //this.name = name || this._getFileName();
         this.name = name ? name : this._getFileName();
-        if (_DEBUG_) global.log("PlacesInfo: _init - name = "+this.name);
         this.icon = icon ? new Gio.ThemedIcon({ name: icon }) : this.getIcon();
-        if (_DEBUG_) global.log("PlacesInfo: _init - icon = "+this.icon);
     }
 
     isRemovable() {
@@ -71,7 +66,6 @@ var PlaceInfo = class GnoMenu_PlaceInfo {
     }
 
     getIcon() {
-        if (_DEBUG_) global.log("PlacesInfo: getIcon");
         try {
             let info;
             if (UseSymbolicIcons) {
@@ -84,7 +78,6 @@ var PlaceInfo = class GnoMenu_PlaceInfo {
         } catch(e) {
             if (e instanceof Gio.IOErrorEnum) {
                 // return a generic icon for this kind
-                if (_DEBUG_) global.log("PlacesInfo: getIcon error - returning generic icon");
                 switch (this.kind) {
                 case 'network':
                     return new Gio.ThemedIcon({ name: 'folder-remote-symbolic' });
@@ -103,13 +96,11 @@ var PlaceInfo = class GnoMenu_PlaceInfo {
     }
 
     _getFileName() {
-        if (_DEBUG_) global.log("PlacesInfo: _getFileName");
         try {
             let info = this.file.query_info('standard::display-name', 0, null);
             return info.get_display_name();
         } catch(e) {
             if (e instanceof Gio.IOErrorEnum) {
-                if (_DEBUG_) global.log("PlacesInfo: _getFileName error - returning basename of file");
                 return this.file.get_basename();
             }
         }
@@ -154,13 +145,11 @@ var PlacesManager = class GnoMenu_PlacesManager {
         };
 
         let homePath = GLib.get_home_dir();
-        if (_DEBUG_) global.log("PlacesManager: _init - homePath found at "+homePath);
 
         this._places.special.push(new PlaceInfo('special',
                                                 Gio.File.new_for_path(homePath),
                                                 _("Home")));
 
-        if (_DEBUG_) global.log("PlacesManager: _init - homePath added to special places as Home");
 
         for (let i = 0; i < DEFAULT_DIRECTORIES.length; i++) {
             let specialPath = GLib.get_user_special_dir(DEFAULT_DIRECTORIES[i]);
@@ -171,18 +160,15 @@ var PlacesManager = class GnoMenu_PlacesManager {
                                                         Gio.File.new_for_path(specialPath)));
             }
         }
-        if (_DEBUG_) global.log("PlacesManager: _init - default directories added to special places");
 
         /*
         * Show devices, code more or less ported from nautilus-places-sidebar.c
         */
         this._volumeMonitor = Gio.VolumeMonitor.get();
         this._connectVolumeMonitorSignals();
-        if (_DEBUG_) global.log("PlacesManager: _init - volume monitor and signals connected");
         this._updateMounts();
 
         this._bookmarksFile = this._findBookmarksFile(); // Passingthru67 - Added missing semi-colon
-        if (_DEBUG_) global.log("PlacesManager: _init - bookmarksFile found at "+this._bookmarksFile);
         this._bookmarkTimeoutId = 0;
         this._monitor = null;
 
@@ -198,14 +184,11 @@ var PlacesManager = class GnoMenu_PlacesManager {
                     return false;
                 });
             });
-            if (_DEBUG_) global.log("PlacesManager: _init - bookmarksFile signal connected");
             this._reloadBookmarks();
-            if (_DEBUG_) global.log("PlacesManager: _init - bookmarks reloaded");
         }
     }
 
     _connectVolumeMonitorSignals() {
-        if (_DEBUG_) global.log("PlacesManager: _connectVolumeMonitorSignals");
         const signals = ['volume-added', 'volume-removed', 'volume-changed',
                          'mount-added', 'mount-removed', 'mount-changed',
                          'drive-connected', 'drive-disconnected', 'drive-changed'];
@@ -229,7 +212,6 @@ var PlacesManager = class GnoMenu_PlacesManager {
     }
 
     _updateMounts() {
-        if (_DEBUG_) global.log("PlacesManager: _updateMounts");
         this._places.devices = [];
         this._places.network = [];
 
@@ -247,7 +229,6 @@ var PlacesManager = class GnoMenu_PlacesManager {
                                                 _("Browse network"),
                                                 'network-workgroup'+symbolic));
 
-        if (_DEBUG_) global.log("PlacesManager: _updateMounts - standard places added");
 
         /* first go through all connected drives */
         let drives = this._volumeMonitor.get_connected_drives();
@@ -266,7 +247,6 @@ var PlacesManager = class GnoMenu_PlacesManager {
             }
         }
 
-        if (_DEBUG_) global.log("PlacesManager: _updateMounts - connected drives itterated through");
 
         /* add all volumes that is not associated with a drive */
         let volumes = this._volumeMonitor.get_volumes();
@@ -284,7 +264,6 @@ var PlacesManager = class GnoMenu_PlacesManager {
                 this._addMount(kind, mount);
         }
 
-        if (_DEBUG_) global.log("PlacesManager: _updateMounts - volumes assiated with drives added");
 
         /* add mounts that have no volume (/etc/mtab mounts, ftp, sftp,...) */
         let mounts = this._volumeMonitor.get_mounts();
@@ -305,14 +284,12 @@ var PlacesManager = class GnoMenu_PlacesManager {
             this._addMount(kind, mounts[i]);
         }
 
-        if (_DEBUG_) global.log("PlacesManager: _updateMounts - mounts that have no volume added");
 
         this.emit('devices-updated');
         this.emit('network-updated');
     }
 
     _findBookmarksFile() {
-        if (_DEBUG_) global.log("PlacesManager: _findBookmarksFile");
         let paths = [
             GLib.build_filenamev([GLib.get_user_config_dir(), 'gtk-3.0', 'bookmarks']),
             GLib.build_filenamev([GLib.get_home_dir(), '.gtk-bookmarks']),
@@ -320,17 +297,14 @@ var PlacesManager = class GnoMenu_PlacesManager {
 
         for (let i = 0; i < paths.length; i++) {
             if (GLib.file_test(paths[i], GLib.FileTest.EXISTS)) {
-                if (_DEBUG_) global.log("PlacesManager: _findBookmarksFile - found .. returning path");
                 return Gio.File.new_for_path(paths[i]);
             }
         }
 
-        if (_DEBUG_) global.log("PlacesManager: _findBookmarksFile - not found .. returning NULL");
         return null;
     }
 
     _reloadBookmarks() {
-        if (_DEBUG_) global.log("PlacesManager: _reloadBookmarks");
         this._bookmarks = [];
 
         let content = Shell.get_file_contents_utf8_sync(this._bookmarksFile.get_path());
@@ -380,7 +354,6 @@ var PlacesManager = class GnoMenu_PlacesManager {
     }
 
     _addMount(kind, mount) {
-        if (_DEBUG_) global.log("PlacesManager: _reloadBookmarks");
         let devItem = new PlaceDeviceInfo(kind, mount);
         this._places[kind].push(devItem);
     }

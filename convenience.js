@@ -1,4 +1,6 @@
 /*
+  This is a updated version of then gnomenu shell extension. You can find the original
+  desclaimer here below.
   Copyright (c) 2011-2012, Giovanni Campagna <scampa.giovanni@gmail.com>
 
   Redistribution and use in source and binary forms, with or without
